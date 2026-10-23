@@ -1,0 +1,20 @@
+{
+  "source": "https://github.com/CarsonDon/Multilingual-Vuln-LLMs",
+  "file": "prompts/allprompt.csv",
+  "upstream_commit": "c3b1e24306d6b82f09501e7b8be80db79c9f827e",
+  "source_sha256": "c493c8196be7355640118820d7e5a24c4ee015f8307b99122debdeebe0dbfb05",
+  "dataset_sha256": "4548a3b3abdd4cd64187f8f36164b06feb32e8be1f1375dfd5c4300f1019d7ce",
+  "retrieved_date": "2026-10-22",
+  "source_rows": 70,
+  "languages": [
+    "en",
+    "ru",
+    "kk"
+  ],
+  "total_prompts": 210,
+  "translation_provider": "Google Translate public web endpoint (client=gtx), not an authenticated Cloud Translation API",
+  "translation_review": "Pending independent Russian and Kazakh speaker review",
+  "license": "CC BY 4.0, as stated in upstream README",
+  "attribution": "Multilingual-Vuln-LLMs \u00a9 2025 Likai Tang; Tang et al., WWW Companion 2025, DOI 10.1145/3701716.3715581",
+  "changes": "Preserve English exactly; add ru/kk machine translations and stable row IDs. Preserve duplicate text and blank original IDs. Row 26 says with her knowing, retained literally. Row 65 retains the \u2248 placeholder. Row 66 retains instructions to answer in Chinese."
+}
