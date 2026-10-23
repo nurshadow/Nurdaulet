@@ -1,5 +1,7 @@
 # Lingua Lab: paper prompts in English, Russian and Kazakh
 
+## This code was developed for a midterm project in my Master's program. 
+
 ## Run locally
 
 Start Ollama with `llama3:latest` installed, then run `python3 server.py` in this folder. Open http://127.0.0.1:8765. Python's standard library is sufficient. Use `--port 8766` if necessary. Keep the terminal running; Ctrl+C stops the website.
