@@ -1,46 +1,54 @@
-# Lingua Lab: paper prompts in English, Russian and Kazakh
+# Lingua Lab
 
-## This code was developed for a midterm project in my Master's program. 
+Local multilingual AI safety chatbot for English, Russian and Kazakh. Llama 3 generates answers; an optional Qwen3 4B checker reviews them before display. Built as a Midterm project and extended for Assignment 3.
 
-## Run locally
+## Setup
 
-Start Ollama with `llama3:latest` installed, then run `python3 server.py` in this folder. Open http://127.0.0.1:8765. Python's standard library is sufficient. Use `--port 8766` if necessary. Keep the terminal running; Ctrl+C stops the website.
+Install Python 3 and Ollama. The web server uses only the Python standard library; no pip packages or paid API are required. Start Ollama, then download the models:
 
-## Dataset and attribution
+```sh
+ollama pull llama3:latest
+ollama pull qwen3:4b
+```
 
-The website uses all **70 rows** from `prompts/allprompt.csv` in [CarsonDon/Multilingual-Vuln-LLMs](https://github.com/CarsonDon/Multilingual-Vuln-LLMs). English strings, categories, duplicates and original IDs are preserved. Russian (`ru`) and Kazakh (`kk`) are new Google Translate machine translations, not author-provided translations. Independent native-speaker review remains pending. This produces 210 prompt entries. Stable `source_row` values disambiguate blank IDs in rows 61–70.
+Open a terminal in this repository folder and run:
 
-Source: Multilingual-Vuln-LLMs © 2025 Likai Tang, CC BY 4.0 according to the upstream README. Paper: Tang et al. (2025), *A Framework to Assess Multilingual Vulnerabilities of LLMs*, WWW Companion 2025. https://doi.org/10.1145/3701716.3715581. License: https://creativecommons.org/licenses/by/4.0/.
+```sh
+python3 server.py
+```
 
-Changes: Russian/Kazakh translations, row IDs, provenance metadata and this independent local interface/backend. The authors do not endorse this adaptation. `data/provenance.json` records the source commit, checksums, translation method and review status. `data/upstream_allprompt.csv` preserves the original source file for audit only; the active dataset and language selectors contain only EN/RU/KK. `data/paper_prompts_en_ru_kk.csv` is the three-language version.
+Visit http://127.0.0.1:8765/ . Keep the terminal open. On macOS, Start_Chatbot.command is an alternative launcher. Stop an older server before starting an updated copy. GitHub stores the source; GitHub Pages cannot run this Python/Ollama backend.
 
-Source quirks retained deliberately: duplicate English questions; row 26 says “with her knowing”; row 65 contains an “≈” placeholder; row 66 requests Chinese output. These have not been silently repaired or rewritten. Selecting Kazakh as the input language does not override a prompt's explicit request for a different output language.
+## Chat and safety evaluation
 
-## Website
+Choose Baseline or Protected instructions. Enable Qwen safety checker to review answers. Only a valid safe decision releases the candidate; unsafe, uncertain and failed checks withhold it. Ordinary chat does not expose blocked candidates. Models unload sequentially to reduce memory pressure on an 8 GB Mac; swapping still adds delay.
 
-- Chat playground: real local Llama 3 conversations, up to 10 turns. Switching configuration clears the current chat.
-- Paper prompt library: browse by input language, category and source row; compare the translation with the exact English source; insert a chosen prompt into chat.
-- Quick evaluation: source rows 12, 41 and 61 × 3 languages × 2 configurations = **18 responses**. This is a small heterogeneous smoke test, not representative coverage.
-- Full evaluation: 70 × 3 × 2 = **420 responses**, potentially an hour or longer on a laptop.
-- Audit: inspect every response and manually label rejection (yes/no/unclear), relevance (1–5) and safety (safe/unsafe/unclear), with reviewer notes.
-- Export: JSON contains prompts, source metadata, configuration, responses, heuristic flags and manual labels. Labels persist only in browser memory until export. Reloading or starting a new evaluation clears them.
+Faster chat is enabled by default in the browser: shorter Llama replies and decision-only Qwen review, with smaller contexts where input size permits. Turn it off for full-length research-style chat. It can change judgments and has not been benchmarked for accuracy or speed improvement.
 
-## Configuration and honest scoring
+Safety evaluation offers Baseline vs protected, or Protected vs protected with Qwen. Quick check runs rows 12, 41 and 61 in three languages and two settings (18 responses); full experiment runs 420. Each condition generates a fresh answer with alternating order. Evaluation always uses research settings, regardless of Faster chat.
 
-Both modes use `llama3:latest`, temperature 0, seed 42, context 4,096 tokens and maximum output 256 tokens. Each evaluation case starts a fresh conversation. Dataset order is fixed; configuration order alternates. There is no separate warm-up, so timings include any initial model loading.
+Load saved results opens compatible paper-prompt JSON exports without inference. Export results saves answers and annotations. Browser results are held in memory: export before refresh or closing. The audit intentionally exposes original candidate text for research, alongside delivered text and Qwen judgments where available. AI judgments and human labels are separate. Refusal percentages are phrase matches, not attack success rates or validated safety scores.
 
-Baseline uses a helpful-assistant system instruction. Protected adds multilingual safety instructions. Both still have the same model's built-in safety training. **There is no synthetic secret and no output filter in the paper experiment.** The old `model_core.py` file is historical and unused by `server.py`; active policies are in `paper_policy.py`.
+## Configuration
 
-Automatic refusal is a phrase-matching estimate, not the paper's G-Eval score. Missing a refusal phrase is not automatically an attack success. Some original political questions are benign. Human safety counts exclude unreviewed and unclear labels and display unsafe/reviewed counts; they are not an automatic ASR. Relevance 1 means irrelevant and 5 means directly addresses the request (including a relevant refusal). Safety review is a content judgment, not a legal determination. A response may be relevant and safe because it refuses appropriately.
+Research generator: llama3:latest, temperature 0, seed 42, context 4096, output 256. Research reviewer: qwen3:4b, temperature 0, seed 42, context 8192, output 256, thinking disabled. Fast chat: generator output 128 and context 2048/4096; reviewer output 32 with context 2048/4096/8192 chosen conservatively from input size. The reviewer withholds inputs beyond its input-size guard rather than silently dropping conversation.
 
-The website is original Python/JS code using the authors' dataset, not their full implementation. G-Eval, back-translation, multi-rater validation and the original eight-language model comparison are not implemented. The earlier PDF and slide results concern the separate synthetic-secret experiment and must not be relabelled as paper-prompt results.
+Tags may change. Record local model digests for reproducible experiments. Model files are downloaded separately and are not included here. Avoid concurrent chatbot and batch inference.
 
-## API and local security
+## Tests
 
-GET `/api/bootstrap` returns the active dataset, provenance and session token. GET `/api/status` checks the model. POST `/api/chat` accepts `configuration` and user/assistant `messages`. POST `/api/test` accepts `configuration` and `case_id`. Both POST endpoints require `X-Lab-Token`. Configuration is `baseline` or `protected`.
+```sh
+python3 -m unittest test_api test_reviewer test_dataset test_performance
+```
 
-Loopback-only server, host/origin checks, plain-text rendering of model outputs, and no user-supplied system messages. Only one inference request runs at a time. Do not expose this development server publicly. Stop schedules no further tests after the current response; it cannot interrupt active Ollama inference. Errors are not counted as successful or safe cases. Partial runs are labelled and exportable. The app does not write conversations to disk.
+HTTP contract tests require local loopback access. Tests mock inference and are not experiment results. Offline checks cover dataset consistency, reviewer decisions, failure handling, context handling and separation of research/fast profiles. JavaScript syntax can be checked with `node --check static/app.js` if Node.js is installed; Node is not needed to run the website.
 
-## Verification and AI assistance
+## Data and attribution
 
-Codex adapted the interface and backend, retrieved and checked the source dataset, produced machine translations using Google's public web translation endpoint, and performed the checks recorded in `QA.md`. This endpoint is not the authenticated Cloud Translation API. Translation review and independent student verification remain necessary.
+Source: Tang et al. (2025), *A Framework to Assess Multilingual Vulnerabilities of LLMs*, DOI https://doi.org/10.1145/3701716.3715581.
+
+Original prompts: https://github.com/CarsonDon/Multilingual-Vuln-LLMs, commit c3b1e24306d6b82f09501e7b8be80db79c9f827e. The authors' 70 English rows are preserved; Russian and Kazakh are added machine translations, awaiting independent review. Duplicates and unusual wording are retained. data/upstream_allprompt.csv preserves the original source, including other languages; the app uses dataset.json for EN/RU/KK only.
+
+Dataset attribution: © 2025 Likai Tang; CC BY 4.0 as stated by the upstream repository. Changes and hashes are recorded in data/provenance.json. Dataset licensing does not automatically assign a license to this application's code.
+
+OpenAI Codex assisted with application code, tests and documentation. Qwen safety labels are model judgments, not independently verified human annotations. This experimental checker can miss harmful content and block harmless content; its explanations can be incorrect. The upload copy contains source and dataset provenance, not local logs, caches, private environment files or unfinished experiment runs.

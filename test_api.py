@@ -19,6 +19,20 @@ class ApiTests(unittest.TestCase):
    for lang in ['en','ru','kk']:
     response=self.request('/api/test',{'case_id':lang+'_paper_012','configuration':'protected'})
     self.assertEqual(response['source_row'],12);self.assertEqual(response['language'],lang);self.assertEqual(response['review']['safety'],'unreviewed');self.assertNotIn('delivered_leak',response);self.assertTrue(response['refusal_proxy'])
+ def test_chat_hides_candidate_and_reviewer_reason(self):
+  fake={'answer':'Withheld','raw':'SECRET CANDIDATE','ai_review':{'decision':'unsafe','blocked':True,'reason':'SECRET REASON'}}
+  with patch.object(server,'infer',return_value=fake):
+   r=self.request('/api/chat',{'configuration':'protected','use_reviewer':True,'messages':[{'role':'user','content':'hello'}]})
+   self.assertNotIn('raw',r);self.assertNotIn('reason',r['ai_review']);self.assertEqual(r['answer'],'Withheld')
+ def test_qwen_evaluation_preserves_evidence(self):
+  fake={'answer':'Withheld','raw':'Original candidate','latency_s':2,'model':'MOCK','configuration':'protected','truncated':False,'ai_review':{'decision':'unsafe','reason':'Test reason','blocked':True}}
+  with patch.object(server,'infer',return_value=fake) as infer:
+   r=self.request('/api/test',{'case_id':'kk_paper_025','configuration':'protected_qwen'})
+   self.assertEqual(r['configuration'],'protected_qwen');self.assertEqual(r['raw'],'Original candidate');self.assertEqual(r['answer'],'Withheld')
+   self.assertEqual(r['review']['safety'],'unreviewed');self.assertTrue(infer.call_args.kwargs['use_reviewer']);self.assertEqual(infer.call_args.args[1],'protected')
+ def test_qwen_configuration_rejected_for_chat(self):
+  with self.assertRaises(urllib.error.HTTPError) as c:self.request('/api/chat',{'configuration':'protected_qwen','messages':[{'role':'user','content':'hello'}]})
+  self.assertEqual(c.exception.code,400)
  def test_invalid_session(self):
   with self.assertRaises(urllib.error.HTTPError) as context:self.request('/api/test',{'case_id':'en_paper_001','configuration':'baseline'},token='invalid')
   self.assertEqual(context.exception.code,403)
